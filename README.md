@@ -2,7 +2,7 @@
 
 Swift-NIO EchoServer example.
 
-This repository accompanies the article Developing a Basic Swift Echo Server Using SwiftNIO.
+This repository accompanies the article [Developing a Basic Swift Echo Server Using SwiftNIO](https://www.process-one.net/blog/developing-a-basic-swift-echo-server-using-swift-nio/).
 Please note that the code here has diverged from the article, as it has been modernized to work with the latest versions of Swift and Xcode.
 
 For similar and always up-to-date examples, refer to the SwiftNIO source tree:
