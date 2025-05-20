@@ -9,41 +9,41 @@ private final class EchoHandler: ChannelInboundHandler {
     private var count: Int = 0
 
     // Invoked on client connection
-    public func channelRegistered(ctx: ChannelHandlerContext) {
-        print("channel registered:", ctx.remoteAddress ?? "unknown")
+    public func channelRegistered(context: ChannelHandlerContext) {
+        print("channel registered:", context.remoteAddress ?? "unknown")
     }
 
     // Invoked on client disconnect
-    public func channelUnregistered(ctx: ChannelHandlerContext) {
+    public func channelUnregistered(context: ChannelHandlerContext) {
         print("we have processed \(count) messages")
     }
 
     // Invoked when data are received from the client
-    public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
-        ctx.write(data, promise: nil)
+    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        context.write(data, promise: nil)
         count = count + 1
     }
 
     // Invoked when channelRead as processed all the read event in the current read operation
-    public func channelReadComplete(ctx: ChannelHandlerContext) {
-        ctx.flush()
+    public func channelReadComplete(context: ChannelHandlerContext) {
+        context.flush()
     }
 
     // Invoked when an error occurs
-    public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
+    public func errorCaught(context: ChannelHandlerContext, error: Error) {
         print("error: ", error)
-        ctx.close(promise: nil)
+        context.close(promise: nil)
     }
 }
 
 // Create a multi thread event loop to use all the system core for the processing
-let group = MultiThreadedEventLoopGroup(numThreads: System.coreCount)
+let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
 // Set up the server using a Bootstrap
 let bootstrap = ServerBootstrap(group: group)
-        // Define backlog and enable SO_REUSEADDR options atethe server level
+        // Define backlog and enable SO_REUSEADDR options at the server level
         .serverChannelOption(ChannelOptions.backlog, value: 256)
-        .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+        .serverChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
 
         // Handler Pipeline: handlers that are processing events from accepted Channels
         // To demonstrate that we can have several reusable handlers we start with a Swift-NIO default
@@ -51,18 +51,18 @@ let bootstrap = ServerBootstrap(group: group)
         // processing through EchoHandler.
         // This is to protect the server from overload.
         .childChannelInitializer { channel in
-            channel.pipeline.add(handler: BackPressureHandler()).then { v in
-                channel.pipeline.add(handler: EchoHandler())
+            channel.pipeline.addHandler(BackPressureHandler()).flatMap { 
+                channel.pipeline.addHandler(EchoHandler())
             }
         }
 
         // Enable common socket options at the channel level (TCP_NODELAY and SO_REUSEADDR).
         // These options are applied to accepted Channels
-        .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
-        .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+        .childChannelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1)
+        .childChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
         // Message grouping
         .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 16)
-        // Let Swift-NIO adjust the buffer size, based on actual trafic.
+        // Let Swift-NIO adjust the buffer size, based on actual traffic.
         .childChannelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
 defer {
     try! group.syncShutdownGracefully()
